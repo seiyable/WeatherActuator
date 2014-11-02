@@ -1,4 +1,10 @@
-//a server for Weather Actuator
+/*Server for Weather Actuator
+* by Seiyable && Queeniebee
+*
+* 
+*/
+
+"use strict";
 
 //================================================
 //require
@@ -7,6 +13,8 @@ var exphbs  = require('express3-handlebars');
 var app = express();
 var bodyParser = require('body-parser');
 var request = require('request');
+//var hue = require("node-hue-api");
+var firmata = require('firmata');
 
 //use static local files
 app.use(express.static(__dirname + '/public'));
@@ -16,7 +24,22 @@ app.set('view engine', 'handlebars');
 //body parser
 app.use(bodyParser());
 
+//firmata settings
+var ledPin = 13;
+var port = "/dev/tty.usbmodem1411";
+var board = new firmata.Board(port, function(err){
+    if (err) {
+        console.log(err);
+        return;
+    }
+    console.log('connected');
+  board.pinMode(ledPin, board.MODES.OUTPUT);
+
+});
+
+
 //================================================
+//routing functions
 
 /***********************************
 A routing function that
@@ -35,7 +58,7 @@ A routing function that
 ***********************************/
 app.post('/', function(req, res){
   //assign the receiveed city name to a new variable
-  cityname = req.body.cityname;
+  var cityname = req.body.cityname;
 
   //initialize variables for the access to Open Weather API
   var query = "http://api.openweathermap.org/data/2.5/weather?";
@@ -44,6 +67,7 @@ app.post('/', function(req, res){
   options["q"] = cityname;
 
   //make a query string with these variables
+  var key = "";
   for (key in options){
     var str = key + '=' + options[key];
     query = query + str + '&';
@@ -64,6 +88,17 @@ app.post('/', function(req, res){
         data.main.temp = data.main.temp.toFixed(1);
         console.log(data.main.temp);
 
+        var tempValue = data.main.temp;
+
+        if(tempValue >= 10){
+
+          board.digitalWrite(ledPin, board.HIGH);
+
+        } else {
+          board.digitalWrite(ledPin, board.LOW);
+
+        }
+
         //render a html with the response
         res.render('layouts/top', data);
     }
@@ -73,6 +108,30 @@ app.post('/', function(req, res){
   request.get(query, callback);
 });
 
+
+//============================================
+//supportive functions
+
+/***********************************
+A function that displays the info of bridges 
+found on your local network
+***********************************/
+/*
+var displayBridges = function(bridge) {
+    console.log("Hue Bridges Found: " + JSON.stringify(bridge));
+};
+
+// --------------------------
+// Using a promise
+hue.locateBridges().then(displayBridges).done();
+
+// --------------------------
+// Using a callback
+hue.locateBridges(function(err, result) {
+    if (err) throw err;
+    displayBridges(result);
+});
+*/
 
 
 //============================================
